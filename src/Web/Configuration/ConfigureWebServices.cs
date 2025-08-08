@@ -21,6 +21,10 @@ public static class ConfigureWebServices
         services.Configure<CatalogSettings>(configuration);
         services.AddScoped<ICatalogViewModelService, CachedCatalogViewModelService>();
 
+        // HttpClient and options for OrderItemsReserver Azure Function
+        services.AddHttpClient("OrderItemsReserver");
+        services.Configure<OrderItemsReserverOptions>(configuration.GetSection("OrderItemsReserver"));
+
         return services;
     }
 }

@@ -13,7 +13,7 @@
     <h1>Review</h1>
     @if (Model.BasketModel.Items.Any())
     {
-        <form asp-page="Checkout" method="post">
+        <form asp-page="Checkout" asp-page-handler="Checkout" method="post">
             <article class="esh-basket-titles row">
                 <br />
                 <section class="esh-basket-title col-xs-3">Product</section>
