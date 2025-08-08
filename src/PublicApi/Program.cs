@@ -1,4 +1,5 @@
-﻿using BlazorShared;
+﻿using System;
+using BlazorShared;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Builder;
@@ -21,8 +22,14 @@ builder.AddAspireServiceDefaults();
 
 builder.Services.AddFastEndpoints();
 
+//throw new Exception("Cannot move further");
+
 // Use to force loading of appsettings.json of test project
 builder.Configuration.AddConfigurationFile("appsettings.test.json");
+
+// Add Application Insights
+builder.Services.AddApplicationInsightsTelemetry();
+// builder.Logging.AddApplicationInsights();
 
 builder.Services.ConfigureLocalDatabaseContexts(builder.Configuration);
 
@@ -52,12 +59,12 @@ builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 builder.Services.AddSwagger();
 
 builder.Services.AddMetronome();
-string seqUrl = builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341";
+// string seqUrl = builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341";
 
-builder.AddSeqEndpoint(connectionName: "seq", options =>
-{
-    options.ServerUrl = seqUrl;
-});
+// builder.AddSeqEndpoint(connectionName: "seq", options =>
+// {
+//     options.ServerUrl = seqUrl;
+// });
 
 var app = builder.Build();
 
