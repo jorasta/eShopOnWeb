@@ -42,10 +42,21 @@ public class ReserveOrderItemsHandler : INotificationHandler<OrderCreatedEvent>
         var payload = new ReserveOrderRequest
         {
             OrderId = order.Id,
+            FinalPrice = order.Total(),
+            ShippingAddress = new ReserveOrderShippingAddress
+            {
+                Street = order.ShipToAddress.Street,
+                City = order.ShipToAddress.City,
+                State = order.ShipToAddress.State,
+                Country = order.ShipToAddress.Country,
+                ZipCode = order.ShipToAddress.ZipCode
+            },
             Items = order.OrderItems
                 .Select(oi => new ReserveOrderItem
                 {
                     ItemId = oi.ItemOrdered.CatalogItemId,
+                    ProductName = oi.ItemOrdered.ProductName,
+                    UnitPrice = oi.UnitPrice,
                     Quantity = oi.Units
                 })
                 .ToList()
@@ -84,13 +95,26 @@ public class ReserveOrderItemsHandler : INotificationHandler<OrderCreatedEvent>
     private sealed class ReserveOrderRequest
     {
         public int OrderId { get; set; }
+        public decimal FinalPrice { get; set; }
+        public ReserveOrderShippingAddress ShippingAddress { get; set; } = new();
         public List<ReserveOrderItem> Items { get; set; } = new();
     }
 
     private sealed class ReserveOrderItem
     {
         public int ItemId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public decimal UnitPrice { get; set; }
         public int Quantity { get; set; }
+    }
+
+    private sealed class ReserveOrderShippingAddress
+    {
+        public string Street { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
     }
 }
 
