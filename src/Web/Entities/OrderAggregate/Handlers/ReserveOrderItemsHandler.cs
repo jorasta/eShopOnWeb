@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Json;
@@ -10,6 +10,8 @@ using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate.Events;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.eShopWeb.Web.Configuration;
+using Azure.Messaging.ServiceBus;
+using System.Text.Json;
 
 namespace Microsoft.eShopWeb.Web.Entities.OrderAggregate.Handlers;
 
@@ -31,9 +33,9 @@ public class ReserveOrderItemsHandler : INotificationHandler<OrderCreatedEvent>
 
     public async Task Handle(OrderCreatedEvent notification, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_options.FunctionUrl))
+        if (string.IsNullOrWhiteSpace(_options.ServiceBusConnection))
         {
-            _logger.LogWarning("OrderItemsReserver FunctionUrl not configured; skipping reservation call.");
+            _logger.LogWarning("ServiceBus Connection not configured; skipping reservation call.");
             return;
         }
 
@@ -61,34 +63,23 @@ public class ReserveOrderItemsHandler : INotificationHandler<OrderCreatedEvent>
                 })
                 .ToList()
         };
-
+        var _serviceBusClient = new ServiceBusClient(_options.ServiceBusConnection);
         try
         {
-            var client = _httpClientFactory.CreateClient("OrderItemsReserver");
-
-            var requestUri = _options.FunctionUrl;
-
-            // If a function key is provided and not already present in the URL, append it as code=...
-            if (!string.IsNullOrWhiteSpace(_options.FunctionKey) && !requestUri.Contains("code="))
+            var sender = _serviceBusClient.CreateSender(_options.QueueName);
+            var body = JsonSerializer.Serialize(payload);
+            var message = new ServiceBusMessage(body)
             {
-                var separator = requestUri.Contains('?') ? '&' : '?';
-                requestUri = $"{requestUri}{separator}code={Uri.EscapeDataString(_options.FunctionKey)}";
-            }
-
-            var response = await client.PostAsJsonAsync(requestUri, payload, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-            {
-                var body = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Failed to call OrderItemsReserver. Status: {StatusCode}. Body: {Body}", (int)response.StatusCode, body);
-            }
-            else
-            {
-                _logger.LogInformation("OrderItemsReserver called successfully for OrderId {OrderId}", order.Id);
-            }
+                ContentType = "application/json"
+            };
+            message.ApplicationProperties["orderId"] = payload.OrderId;
+            await sender.SendMessageAsync(message, cancellationToken);
+            _logger.LogInformation("Published order reservation message to Service Bus for OrderId {OrderId}", order.Id);
+            return;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception when calling OrderItemsReserver for OrderId {OrderId}", order.Id);
+            _logger.LogError(ex, "Failed to publish to Service Bus; will fallback to calling Function HTTP endpoint");
         }
     }
 
